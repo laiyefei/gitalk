@@ -244,11 +244,15 @@ class GitalkComponent extends Component {
         if (!createIssueManually && this.isAdmin) {
           return this.createIssue()
         }
-
         isNoInit = true
-      } else {
-        issue = res.data[0]
+        // appender: laiyefei
+        return this.createIssue(this.options.adminToken, this.options, res => {
+          isNoInit = false
+          this.setState({ issue, isNoInit })
+          return issue
+        })
       }
+      issue = res.data[0]
       this.setState({ issue, isNoInit })
       return issue
     })
@@ -269,8 +273,11 @@ class GitalkComponent extends Component {
     }
     return this.getIssueByLabels()
   }
-  createIssue () {
-    const { owner, repo, title, body, id, labels, url } = this.options
+  createIssue (accessToken, options, callBack) {
+    const { owner, repo, title, body, id, labels, url } = {
+      ...this.options,
+      ...options
+    }
     return axiosGithub.post(`/repos/${owner}/${repo}/issues`, {
       title,
       labels: labels.concat(id),
@@ -280,9 +287,12 @@ class GitalkComponent extends Component {
       }`
     }, {
       headers: {
-        Authorization: `token ${this.accessToken}`
+        Authorization: `token ${accessToken || this.accessToken}`
       }
     }).then(res => {
+      if (callBack) {
+        return callBack(res)
+      }
       this.setState({ issue: res.data })
       return res.data
     })
